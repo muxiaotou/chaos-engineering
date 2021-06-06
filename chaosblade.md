@@ -140,19 +140,59 @@
         ./blade create mem load --mode ram --mem-percent 50 --reserve 100 --rate 10 --timeout 120 //reserve预留100M内存，当mem-percent存在会被优先采用，rate指定在ram mode时内存占用速率10MB/s
         
 ## NETWORK
-    1.network delay
+    1.network delay(可以添加timeout指定运行时间，自动停止销毁实验)
+        ./blade create network delay --interface eth0 --time 30    // 指定eth0 网卡延迟30ms，对整个网卡延迟(interface和time是必须参数)，通过ping 114.67.124.166 目标地址进行验证，对比延迟3ms和30ms的表现
+        64 bytes from 114.67.124.166: icmp_seq=26 ttl=54 time=3.00 ms
+        64 bytes from 114.67.124.166: icmp_seq=27 ttl=54 time=2.98 ms
+        64 bytes from 114.67.124.166: icmp_seq=28 ttl=54 time=26.1 ms
+        64 bytes from 114.67.124.166: icmp_seq=29 ttl=54 time=34.2 ms
+        
+        ./blade create network delay --time 3000 --offset 1000 --interface eth0 --local-port 80,8000-8081 // 指定eth0网卡延迟3s，且浮动时间1s，实际延迟时间[2~4s]，且仅对本地80,8000-8081端口生效
+        通过telnet IP port的返回时间来验证，且仅对限制了的port有延迟，非限制port无延迟
+        
+        ./blade create network delay --time 3000 --interface eth0 --remote-port 80 --destination-ip 10.0.0.20 // 指定eth0网卡延迟3s，仅对目标IP的目标port有效
+        通过telnet IP port的返回时间来验证，且仅对限制了的port有延迟，非限制port无延迟
+        
+        ./blade create network delay --time 5000 --interface eth0 --exclude-port 22,8000-8080 // 指定eth0网卡延迟5s，排除22,8000-8080端口，对本地及远端端口均生效
+        
     2.network dns
-    3.network drop
+        ./blade create network dns --domain www.baidu.com --ip 10.0.0.0 //通过修改本地hosts文件，达到篡改域名地址映射的目的，通过ping来进行验证
+        
+    3.network drop(只能100%丢包，对所有网卡有效，可以使用network loss替代)
+        ./blade create network drop --source-ip 10.0.0.20 --network-traffic in  //将源IP是10.0.0.20，进入本机的网络包全部丢弃，可以在源节点通过telnet 来验证
+        ./blade create network drop --destination-ip 10.0.0.21  --network-traffic in --timeout 10 //将目标IP是10.0.0.21进入本机的网络包全部丢弃，可以在其他非destination节点通过telent来验证,如果本机就是10.0.0.21，切记一定勿忘timeout参数
+        ./blade create network drop --source-port 20051 --network-traffic in // 将源port是80，进入本机的包全部丢掉
+        ./blade create network drop --destination-port 80,81 --network-traffic in // 将目标port 80,81，进去本机的包全部丢掉
+        ./blade create network drop --destination-port 20051 --network-traffic out // 将目标port是20051，从本机出去的包全部丢掉
+        
     4.network loss
-    5.network corrupt
-    6.network reorder
-    7.network duplicate
+        ./blade create network loss --percent 70 --interface eth0 --local-port 80 // 通过eth0访问本机80端口的70%的包丢掉
+        ./blade create network loss --percent 100 --interface eth0 --remote-port 20051 --destination-ip 10.0.0.20 // 本机访问10.0.0.20 80端口的包全部丢掉
+        ./blade create network loss --percent 60 --interface eth0 --exclude-port 22,8000-8080 // 对eth0整个网卡60%丢包，排除特定端口
+        ./blade create network loss --percent 100 --interface eth0 --timeout 20  // 实现整个网卡不可访问，20s后恢复
+        
+    5.network corrupt(模拟网络包损坏，可以指定port，ip等参数，类似delay用法)
+        ./blade create network corrupt --percent 80 --destination-ip 10.0.0.20 --interface eth0 // 模拟到10.0.0.20的ip 网络包损坏80%，可以通过ping验证
+        
+    6.network reorder(模拟网络包重新排序，可以指定port、ip等参数，类似delay用法，可以模拟部分包的延迟)
+        ./blade create  network reorder --correlation 80 --percent 50  --time 500 --interface eth0 --destination-ip 10.0.0.20 // 模拟到10.0.0.20的ip请求包乱序，网络包
+        延迟500ms，立即发送50%的包，通过ping IP -A观察效果
+        
+    7.network duplicate(模拟网络包重复，可以指定ip、port等参数，类似delay用法)
+        ./blade create network duplicate --percent=10 --interface=eth0 --destination-ip 10.0.0.20 // 模拟到10.0.0.20的ip 网络包有10%的重发
+        
     8.network occupy
+        ./blade create  network occupy --port 80 --force // 强制占用本地port
     
 ## PROCESS
-    1.process kill
-    2.process stop
-    
+    1.process kill(使用kill -9 或kill -15杀死进程)
+        ./blade create process kill --process server   // 使用ps -ef |grep KEY查找进程并kill -9 PIDS
+        ./blade create process kill --process-cmd python // 使用pgrep 查找出python进行并kill -9 PIDS
+        ./blade c process kill --local-port 8080 --signal 15   // 指定信号量，kill -15 8080端口的进程，-9 内核级强制杀死一个进程，-15 操作系统发送一个通知告诉应用主动关闭
+        
+    2.process stop(使用kill -19 模拟进行hang，可以使用kill -18 恢复进程)
+        ./blade create process stop --process server  --timeout 20
+        
 ## STATUS
     ./blade status --type create --status Success //查询混沌实验状态
     ./blade status 8828df65fa8d75c6
@@ -193,10 +233,60 @@
 ## SCRIPT
 ## DOCKER
 ## K8S
-        
-        
-   
-          
-        
-        
+
+## 模拟端口占用自己写的小脚本
+    [root@chaos1 ~]# cat occupy_port.py 
+    #!/usr/bin/python
+    #-*- coding:utf-8 -*-
     
+    import socket
+    
+    s = socket.socket()
+    host = socket.gethostname()
+    port = 80
+    s.bind((host, port))
+    
+    s.listen(5)
+    
+    while True:
+    	c, addr = s.accept()
+    	print 'connect addr: ', addr
+    	c.send("welcome !")
+    	c.close()
+    	
+    [root@chaos2 ~]# cat client.py 
+    #!/usr/bin/python
+    #-*- coding:utf-8 -*-
+    
+    import socket
+    import sys
+    import time
+    
+    host = sys.argv[1]
+    port = int(sys.argv[2])
+    
+    while True:
+    	s = socket.socket()
+    	s.bind(('10.0.0.20', 20051))
+    	s.connect((host, port))
+    	print s.recv(1024)
+    	s.close()
+    	time.sleep(1)
+    	
+## chaosblade实现方法小结(后续再深入代码学习)
+    cpu load： 利用消耗CPU时间片来实现，增加所有核或者指定核的负载
+    disk burn：使用dd命令实现，对特定目录进行读、写文件，触发目录所在磁盘的util增加
+    disk fill：按照特定的百分比、大小，创建文件填充测试目录
+    mem load：内存占用
+        ram 模式采用代码申请内存实现
+        cache 模式采用 dd、mount 命令实现，挂载 tmpfs 并且进行文件填充
+        ***如果执行了内存满载，无法恢复，如何处理 A：重启机器恢复
+    network delay：通过tc命令， 指定网卡、本地端口、远程端口、目标 IP 延迟
+    network drop：iptable实现， 仅针对端口，不针对整个网口，有局限性，可以使用network loss替代
+    network loss：tc实现，指定网卡、本地端口、远程端口、目标 IP 丢包
+    network corrupt：tc实现，模拟网络包损坏
+    network record：tc实现，模拟网络包的顺序重新调整
+    network duplicate：tc实现，模拟网络包重发
+    network occupy：指定特定port启动server，模拟端口占用
+    process kill:通过 ps -ef | grep KEY、pgrep找到pid，后续通过kill -9杀掉，杀掉进程后不能恢复
+    process stop： 通过 ps -ef | grep KEY、pgrep找到pid，使用 kill -STOP PIDS 暂停进程，使用 kill -CONT PIDS 恢复进程
