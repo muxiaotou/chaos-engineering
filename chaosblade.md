@@ -5,6 +5,7 @@
         Docker容器：杀容器、容器内CPU、内存、网络、磁盘、进程等场景
         云原生平台：kubernetes平台节点上的CPU、内存、网络、磁盘、进程实验场景，Pod网络和Pod本身的场景等
         ......
+    中文使用文档： https://cf.jd.com/pages/viewpage.action?pageId=445464181
 # install(centos7.6)
     获取最新release包：wget https://chaosblade.oss-cn-hangzhou.aliyuncs.com/agent/github/1.2.0/chaosblade-1.2.0-linux-amd64.tar.gz
     下载完成后解压即可，无需编译：tar -zxvf chaosblade-1.2.0-linux-amd64.tar.gz -C /
@@ -19,7 +20,7 @@
 
     支持CLI和HTTP两种调用方式，以下demo通过CLI调用，http的后续再学习调用
     
-# demo(基础资源)
+# 基础资源demo
 ## CPU
     1.cpu满负荷实验：
         ./blade create cpu fullload   或./blade create cpu load
@@ -290,3 +291,33 @@
     network occupy：指定特定port启动server，模拟端口占用
     process kill:通过 ps -ef | grep KEY、pgrep找到pid，后续通过kill -9杀掉，杀掉进程后不能恢复
     process stop： 通过 ps -ef | grep KEY、pgrep找到pid，使用 kill -STOP PIDS 暂停进程，使用 kill -CONT PIDS 恢复进程
+    
+# docker demo
+    通过docker  status [CONTAINER...] 可以查看指定container或所有container的资源使用情况
+## CPU
+    ./blade create docker cpu load --blade-tar-file /root/chaosblade-1.2.0-linux-amd64.tar.gz --container-id 0b1c2c02fd00  
+    //--container-id必须参数，指定演习的container id
+    //--blade-tar-file 指定 chaosblade tar包路径，CPU演习会拷贝tar包到container内，在container内使用chaos_burncpu模拟cpu负载，配合--blade-override使用，表示是否要覆盖container已有/opt下面的chaosblade包，默认false
+    以上是docker场景的参数，CPU 的负载演练参数同基础资源中的描述
+    测试时，container是2c4g，chaos_burncpu会将宿主机所有cpu 核均打满负载，而不是预期的2个c
+    
+## MEM
+    ./blade create docker mem load --mode ram --mem-percent 50 --blade-tar-file /root/chaosblade-1.2.0-linux-amd64.tar.gz --container-id 0b1c2c02fd00
+    //--container-id必须参数，指定演习的container id
+    //--blade-tar-file 指定 chaosblade tar包路径，MEM演习会拷贝tar包到container内，在container内使用chaos_burnmem模拟mem负载，配合--blade-override使用，表示是否要覆盖container已有/opt下面的chaosblade包，默认false
+    以上是docker场景的参数，MEM 的负载演练参数同基础资源中的描述
+
+## CONTAINER
+    ./blade create docker container remove --container-id 0b1c2c02fd00 // 删除指定container，container被删除后，通过./blade destroy UID无法再恢复
+
+## DISK
+    同基础资源disk 负载演练
+    
+## NETWORK
+    用法同基础资源，但是依赖 chaosblade-tool 镜像，默认拉取registry.cn-hangzhou.aliyuncs.com/chaosblade/chaosblade-tool:latest，可以指定--image-repo替代registry
+    由于测试环境不通外网，暂未验证
+
+## PROCESS
+    ./blade create docker process kill --process 'ganesha.nfsd' --blade-tar-file /root/chaosblade-1.2.0-linux-amd64.tar.gz  --container-id bae223be2d33
+    PROCESS方法同基础资源 PROCESS 负载演练
+    
